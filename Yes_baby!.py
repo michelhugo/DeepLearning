@@ -1,9 +1,4 @@
-#test with hot label
 import torch as t
-import math
-
-from torch import optim
-from torch import Tensor
 from torch.autograd import Variable
 from torch import nn
 from torch.nn import functional as F
@@ -18,32 +13,32 @@ train_input, train_target = Variable(train_input), Variable(train_target)
 test_input, test_target = Variable(test_input), Variable(test_target)
 
 NB_EPOCHS = 25
-ERROR_RATE = 15 # in percent
 
 # To be defined:
-NB_HIDDEN = 300 #above 500 provokes decrease in efficiency
 MINI_BATCH_SIZE = 100 # seems to be quite optimal (see lesson 5.2)
 
 class Net(nn.Module):
-    #get 2000x1x14x14 -> 2000x10
     def __init__(self):
-        super(Net,self).__init__()
-        self.conv1 = nn.Conv2d(1,32,kernel_size=3) #1x14x14 -> 32x12x12
-        self.conv2 = nn.Conv2d(32,64,kernel_size=3)
-        self.fc1 = nn.Linear(64*4,512)
-        self.fc3 = nn.Linear(512,10)
-    def forward(self,x):
-        x = F.relu(F.max_pool2d(self.conv1(x), kernel_size = 2)) #size 32x6x6
-        x= F.relu(F.max_pool2d(self.conv2(x),kernel_size = 2)) #-> 64x2x2
-        x = x.view(-1,64*4)
-        x = F.relu(self.fc1(x))
+        super(Net, self).__init__()
+        #1x14x14
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=5)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=5)
+        self.fc1 = nn.Linear(64, 128)
+        self.fc3 = nn.Linear(128,256)
+        self.fc2 = nn.Linear(256,10)
+
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x), kernel_size=2, stride=2))
+        x = F.relu(F.max_pool2d(self.conv2(x), kernel_size=2, stride=2))
+        x = F.relu(self.fc1(x.view(-1, 64)))
         x = F.relu(self.fc3(x))
+        x = self.fc2(x)
         return x
 
 def train_model(model, input, target, criterion, lr_):
     #input of size 1000x2x14x14
     #goal is 1000x2x10 -> 2000x1x14x14
-    optimizer = t.optim.SGD(model.parameters(), lr=lr_,momentum=0.002,dampening = 0.002)
+    optimizer = t.optim.Adam(model.parameters(), lr=lr_)#,momentum=0.002,dampening = 0.002, weight_decay = 0.002)
     loss_table = []
     in_ = convert_to_in(input)
     tar_ = process_target(target)
@@ -99,10 +94,13 @@ def convert_to_in(input):
     return r
     
 criterion = nn.CrossEntropyLoss() #-> better to use crossEntropy for classification !!
-
+test_error = t.empty(10)
+train_error = t.empty(10)
 for e in range(10):
     model = Net()
-    train_model(model,train_input,train_classes,criterion,1e-2)
-     
-    print("Error rate in testing: {}%".format(compute_error(model,test_input,test_target)/NB_PAIRS*100))
-    print("Error rate in training: {}%".format(compute_error(model,train_input,train_target)/NB_PAIRS*100))
+    train_model(model,train_input,train_classes,criterion,1e-3)
+    test_error[e] = compute_error(model,test_input,test_target)/NB_PAIRS*100
+    train_error[e] = compute_error(model,train_input,train_target)/NB_PAIRS*100
+    print("Error rate in testing: {}%".format(test_error[e]))
+    print("Error rate in training: {}%".format(train_error[e]))
+print("Mean error for training: {:0.2f}\u00B1{:0.2f}% and testing: {:0.2f}\u00B1{:0.2f}%".format(t.mean(train_error),t.std(train_error),t.mean(test_error),t.std(test_error)))
