@@ -12,6 +12,10 @@ train_input,train_target,train_classes,test_input,test_target,test_classes \
 train_input, train_target = Variable(train_input), Variable(train_target)
 test_input, test_target = Variable(test_input), Variable(test_target)
 
+#mu, std = train_input.mean(0), train_input.std(0)
+#train_input.sub_(mu).div_(std)
+#test_input.sub_(mu).div_(std)
+
 NB_EPOCHS = 25
 
 # To be defined:
@@ -26,14 +30,26 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(64, 128)
         self.fc3 = nn.Linear(128,256)
         self.fc2 = nn.Linear(256,10)
+        self.fc4 = nn.Linear(256,512)
+        self.fc5 = nn.Linear(512,10)
+        self.m = nn.Dropout2d(p=0.3)
+        self.b1 = nn.BatchNorm1d(128)
+        self.b2 = nn.BatchNorm1d(256)
 
     def forward(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x), kernel_size=2, stride=2))
         x = F.relu(F.max_pool2d(self.conv2(x), kernel_size=2, stride=2))
+        #x = self.m(x)
         x = F.relu(self.fc1(x.view(-1, 64)))
+        x = self.b1(x)
+        #x = self.m(x)
         x = F.relu(self.fc3(x))
+        #x = self.b2(x)
         x = self.fc2(x)
+        #x = F.relu(self.fc4(x))
+        #x = self.fc5(x)
         return x
+    
 
 def train_model(model, input, target, criterion, lr_):
     #input of size 1000x2x14x14
@@ -44,7 +60,7 @@ def train_model(model, input, target, criterion, lr_):
     tar_ = process_target(target)
     for e in range(NB_EPOCHS):
         sum_loss = 0
-        for b in range(0,input.size(0),MINI_BATCH_SIZE):
+        for b in range(0,in_.size(0),MINI_BATCH_SIZE):
             output = model(in_[b:b+MINI_BATCH_SIZE])
             loss = criterion (output,tar_[b:b+MINI_BATCH_SIZE].long())
             model.zero_grad()
@@ -53,7 +69,7 @@ def train_model(model, input, target, criterion, lr_):
             # Update parameters after backward pass
             optimizer.step()
         loss_table.append(sum_loss)
-        print("Epoch no {:d} -> loss = {:0.2f}".format(e+1,sum_loss))
+        print("Epoch no {:d} -> loss = {:0.4f}".format(e+1,sum_loss))
         
 def compute_error(model, input, target):
     in_ = convert_to_in(input)
@@ -101,6 +117,6 @@ for e in range(10):
     train_model(model,train_input,train_classes,criterion,1e-3)
     test_error[e] = compute_error(model,test_input,test_target)/NB_PAIRS*100
     train_error[e] = compute_error(model,train_input,train_target)/NB_PAIRS*100
-    print("Error rate in testing: {}%".format(test_error[e]))
-    print("Error rate in training: {}%".format(train_error[e]))
-print("Mean error for training: {:0.2f}\u00B1{:0.2f}% and testing: {:0.2f}\u00B1{:0.2f}%".format(t.mean(train_error),t.std(train_error),t.mean(test_error),t.std(test_error)))
+    print("Error rate in testing: {:0.3}%".format(test_error[e]))
+    print("Error rate in training: {:0.3f}%".format(train_error[e]))
+print("Mean error for training: {:0.4f}\u00B1{:0.4f}% and testing: {:0.4f}\u00B1{:0.4f}%".format(t.mean(train_error),t.std(train_error),t.mean(test_error),t.std(test_error)))
