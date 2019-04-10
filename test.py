@@ -20,8 +20,8 @@ NB_RUN = 10
 train_input,train_target,train_classes,test_input,test_target,test_classes \
 = prologue.generate_pair_sets(NB_PAIRS)
 
-train_input, train_target = Variable(train_input), Variable(train_target)
-test_input, test_target = Variable(test_input), Variable(test_target)
+train_input = Variable(train_input.float(),requires_grad=True)
+test_input = Variable(test_input.float(),requires_grad=True)
 
 ###############################################################################
                             # - NETWORKS - #
@@ -53,8 +53,8 @@ class Comparison(nn.Module):
     def __init__(self):
         super(Comparison,self).__init__()
         self.fc1 = nn.Linear(20,64)
-        self.fc2 = nn.Linear(64,1)
-        self.m = nn.Sigmoid()
+        self.fc2 = nn.Linear(64,2)
+        self.m = nn.softmax()
         
     def forward(self,x):
         x = x.view(-1,20)
@@ -93,6 +93,7 @@ def compute_error_comparison (input,target):
 ###############################################################################
                             
 def training(model_classification,model_comparison):
+    ##### TO MODIFY ##############################################################################
     lr_ = 1e-3
     criterion_cl = nn.CrossEntropyLoss()
     criterion_co = nn.BCELoss()
@@ -108,21 +109,23 @@ def training(model_classification,model_comparison):
         
         for b in range(0,input.size(0),MINI_BATCH_SIZE):
             input_co = t.empty(MINI_BATCH_SIZE,2,10)
+            model_classification.zero_grad()
             for i in range(2):
                 output_cl = model_classification(input[b:b+MINI_BATCH_SIZE,i,:,:].view(100,1,14,14))
                 loss_cl = criterion_cl (output_cl,target_cl[b:b+MINI_BATCH_SIZE,i].long())
-                model_classification.zero_grad()
+                input_co[:,i,:] = output_cl
                 loss_cl.backward(retain_graph=True)
                 sum_loss_classification = sum_loss_classification + loss_cl.item()
                 # Update parameters after backward pass
-                optimizer_cl.step()
-                input_co[:,i,:] = output_cl
+            optimizer_cl.step()
+                
             output_co = model_comparison(input_co)
             loss_co = criterion_co(output_co,target_co[b:b+MINI_BATCH_SIZE].float())
             model_comparison.zero_grad()
             loss_co.backward()#retain_graph=True
             sum_loss_comparison = sum_loss_comparison + loss_co.item()
             optimizer_co.step()
+        ######### \ MODIFY ############################################################################
         print("Epoch no {} : \nClassification loss = {:0.4f}\nComparison loss = {:0.4f}".format(e+1,sum_loss_classification,sum_loss_comparison))
 
 def test_models(model_cl, model_co, input, classes, target, train=True):
