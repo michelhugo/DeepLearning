@@ -41,40 +41,23 @@ def d_MSE_loss(predictions, target):
     #return (2*(predictions-target)).mean().item()
     return 2/target.size(0)*(predictions-target)
 
+# --------------------------------------------------------------#
+class optimizer_SGD:
+    def __init__(self, network):
+        self.u = {} #memory of previous update of weights
+        self.v = {} #memory of previous update of bias
+        for i,n in enumerate(network.modules):
+            if (n.param() != []):
+                self.u[i] = 0
+                self.v[i] = 0
 
-def stable_softmax(X):
-    exps = t.exp(X - t.max(X))
-    return exps / t.sum(exps)
-
-def cross_entropy(X,y):
-    """
-    X is the output from fully connected layer (num_examples x num_classes)
-    y is labels (num_examples x 1)
-    	Note that y is not one-hot encoded vector. 
-    	It can be computed as y.argmax(axis=1) from one-hot encoded vectors of labels if required.
-    """
-    m = y.shape[0]
-    p = stable_softmax(X)
-    # We use multidimensional array indexing to extract 
-    # softmax probability of the correct label for each sample.
-    # Refer to https://docs.scipy.org/doc/numpy/user/basics.indexing.html#indexing-multi-dimensional-arrays for understanding multidimensional array indexing.
-    log_likelihood = -t.log(p[range(m),y.long()])
-    loss = t.sum(log_likelihood) / m
-    return loss
-
-def delta_cross_entropy(X,y):
-    """
-    X is the output from fully connected layer (num_examples x num_classes)
-    y is labels (num_examples x 1)
-    	Note that y is not one-hot encoded vector. 
-    	It can be computed as y.argmax(axis=1) from one-hot encoded vectors of labels if required.
-    """
-    m = y.shape[0]
-    grad = stable_softmax(X)
-    grad[range(m),y.long()] -= 1
-    grad = grad/m
-    return grad
-
+    def step(self, sequential, eta, gamma=0.5):
+        for i,n in enumerate(sequential.modules):
+            if (n.param() != []):
+                self.u[i] = self.u[i]*gamma + n.dl_dw*eta
+                self.v[i] = self.v[i]*gamma + n.dl_ds*eta
+                n.weights = n.weights - self.u[i]
+                n.bias = n.bias - self.v[i]
 # --------------------------------------------------------------#
 class Module ():        
     
@@ -161,7 +144,6 @@ class Linear(Module):
         self.bias = 2*a*t.rand(1,size_out)-a*t.rand(1,size_out)
 
     def backward(self, dl_ds):        
-        
         self.dl_ds = dl_ds
         self.dl_dw = t.t(self.input)@self.dl_ds
         return dl_ds@t.t(self.weights) #return dl_dx
@@ -216,7 +198,7 @@ class Sequential(Module):
 #pow of size nxC (number of classes)
 def calculate_error_power(power,tar):
     _,ind = power.max(1)
-    i = ind.clone().detach() #ERROR: is it ok ??
+    i = ind.clone().detach()
     diff = tar.long().view(1000)-i
     return diff.abs().sum()
 
@@ -239,15 +221,16 @@ network.add(Linear(2,8))
 network.add(ReLU())
 network.add(Linear(8,1))
 network.add(Sigmoid())
-
-
+SGD = optimizer_SGD(network)
 
 for i in range(2000):
     network.forward(train_input)
-    #network.display()
+    network.display()
     network.backward()
-    network.update(5e-1)
-#print(network.output)
+    
+    SGD.step(network, 5e-2, gamma = 0.9)
+    #network.update(5e-2)
+
 print("NB error for input: {}".format(calculate_error_threshold(network.output,train_target)))
 print(train_target.sum())
 
