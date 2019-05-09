@@ -38,7 +38,9 @@ def MSE_loss(predictions, target):
     return ((predictions-target)**2).mean().item()
     
 def d_MSE_loss(predictions, target):
-    return (2*(predictions-target)).mean().item()
+    #return (2*(predictions-target)).mean().item()
+    return 2/target.size(0)*(predictions-target)
+
 
 def stable_softmax(X):
     exps = t.exp(X - t.max(X))
@@ -72,7 +74,8 @@ def delta_cross_entropy(X,y):
     grad[range(m),y.long()] -= 1
     grad = grad/m
     return grad
-        
+
+# --------------------------------------------------------------#
 class Module ():        
     
     def __init__(self):
@@ -143,7 +146,6 @@ class Linear(Module):
     def __init__(self,size_in,size_out):
         super().__init__()
         self.init_param(size_in,size_out)
-        #self.dl_dx = None
         self.dl_ds = None
         self.dl_dw = None
         
@@ -153,8 +155,6 @@ class Linear(Module):
     
     #XAVIER uniform initialization
     def init_param(self,size_in, size_out):
-        print(size_in)
-        print(size_out)
         std = math.sqrt(2/(size_in+size_out))
         a = math.sqrt(3)*std
         self.weights = 2*a*t.rand(size_in, size_out)-a*t.rand(size_in, size_out)
@@ -163,12 +163,6 @@ class Linear(Module):
     def backward(self, dl_ds):        
         
         self.dl_ds = dl_ds
-        #in case this is final layer with loss = float
-        if type(self.dl_ds) == type(1.):
-            self.dl_dw = t.t(self.input)*self.dl_ds
-            return dl_ds*t.t(self.weights)
-        
-        
         self.dl_dw = t.t(self.input)@self.dl_ds
         return dl_ds@t.t(self.weights) #return dl_dx
 
@@ -178,15 +172,11 @@ class Linear(Module):
             
     def param(self):
         return [self.weights,self.bias,self.dl_dw, self.dl_ds]
-#    def zero_grad(self):
-#        self.dl_ds = t.tensor([])
-#        self.dl_dw = t.tensor([])
-        
+
 # --------------------------------------------------------------#
 class Sequential(Module):
-    def __init__(self, input, target,d_loss,loss):
+    def __init__(self, target,d_loss,loss):
         self.modules = list()
-        self.input = input
         self.target = target
         self.d_loss = d_loss
         self.loss = loss
@@ -200,33 +190,28 @@ class Sequential(Module):
     def remove(self):
         self.modules = self.modules[0:-2]
 
-    def forward(self):
+    def forward(self, input):
         for i,_ in enumerate(self.modules):
             if i > 0:
                 self.modules[i].forward(self.modules[i-1].output)
             else:
-                self.modules[i].forward(self.input)
+                self.modules[i].forward(input)
         
         self.output = self.modules[-1].output
         
     def display(self):
         print(self.loss(self.output,self.target))
-    
+        #print(self.output)
+        
     def backward(self):
-        grad = self.d_loss(self.input,self.target)
+        grad = self.d_loss(self.output, self.target)
         for _,m in reversed (list(enumerate(self.modules))):
             grad = m.backward(grad)
-            
+
     def update(self,eta):
         for _,n in enumerate(self.modules):
             if (n.param() != []):
-                print(n.weights)
                 n.update_weights(eta)
-
-#    def zero_grad(self):
-#        for i,_ in enumerate(self.modules):
-#            self.modules[i].zero_grad()
-
 # --------------------------------------------------------------#
 #pow of size nxC (number of classes)
 def calculate_error_power(power,tar):
@@ -247,19 +232,25 @@ def calculate_error_threshold(inp, tar):
     return error
 
 
-train_input, train_target, test_input, test_target = g.generate_sets_r()
-mse = MSE()
-network = Sequential(train_input,train_target,d_MSE_loss,MSE_loss)#delta_cross_entropy, cross_entropy)
+train_input, train_target, test_input, test_target = g.generate_sets()
+network = Sequential(train_target,d_MSE_loss, MSE_loss)
 
-network.add(Linear(3,32))
+network.add(Linear(2,32))
 network.add(ReLU())
-network.add(Linear(32,2))
+network.add(Linear(32,1))
 network.add(Sigmoid())
 
 
-for i in range(10):
-    network.forward()
+
+for i in range(2000):
+    network.forward(train_input)
     #network.display()
     network.backward()
-    network.update(1e-1)
-print("NB error after 10 runs: {}".format(calculate_error_power(network.output,train_target)))
+    network.update(5e-1)
+#print(network.output)
+print("NB error for input: {}".format(calculate_error_threshold(network.output,train_target)))
+print(train_target.sum())
+
+network.forward(test_input)
+print("NB error for test: {}".format(calculate_error_threshold(network.output,test_target)))
+print(test_target.sum())
