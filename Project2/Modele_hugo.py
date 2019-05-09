@@ -235,9 +235,9 @@ def calculate_error_threshold(inp, tar):
 train_input, train_target, test_input, test_target = g.generate_sets()
 network = Sequential(train_target,d_MSE_loss, MSE_loss)
 
-network.add(Linear(2,32))
+network.add(Linear(2,8))
 network.add(ReLU())
-network.add(Linear(32,1))
+network.add(Linear(8,1))
 network.add(Sigmoid())
 
 
