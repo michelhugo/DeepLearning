@@ -11,8 +11,11 @@ import numpy as np
 import torch as t
 import math
 import generate_sets_hugo as g
+import matplotlib.pyplot as plt
 
 t.set_grad_enabled(False)
+t.manual_seed(10)
+
 
 def sigmoid(x):
     return 1 / (1 + (-x).exp())
@@ -40,6 +43,31 @@ def MSE_loss(predictions, target):
 def d_MSE_loss(predictions, target):
     #return (2*(predictions-target)).mean().item()
     return 2/target.size(0)*(predictions-target)
+
+def softmax(X):
+    eX = np.exp((X.T - np.max(X, axis=1)).T)
+    return (eX.T / eX.sum(axis=1)).T
+
+def cross_entropy(model, y_pred, y_train, lam=1e-3):
+    m = y_pred.shape[0]
+
+    prob = softmax(y_pred)
+    log_like = -np.log(prob[range(m), y_train])
+
+    data_loss = np.sum(log_like) / m
+    reg_loss = .5 * lam * np.sum(model * model)
+
+    return data_loss + reg_loss
+
+
+def dcross_entropy(y_pred, y_train):
+    m = y_pred.shape[0]
+
+    grad_y = util.softmax(y_pred)
+    grad_y[range(m), y_train] -= 1.
+    grad_y /= m
+
+    return grad_y
 
 def one_hot(labels, nb_labels):
     '''
@@ -220,7 +248,7 @@ class Dropout(Module):
             return input
     
     def backward(self, grad):
-        return grad
+        return self.activation*grad
 # --------------------------------------------------------------#
 class Sequential(Module):
     def __init__(self, target,d_loss,loss):
@@ -279,7 +307,7 @@ def calculate_error_threshold(inp, tar):
 
 #test_labels,train_labels = target_to_one_hot(test_target),target_to_one_hot(train_target)
 
-train_input, train_target, test_input, test_target = g.generate_sets()
+train_input, train_target, test_input, test_target = g.generate_sets_g()
 train_labels = one_hot(train_target,2)
 network = Sequential(train_labels, d_MSE_loss, MSE_loss)
 
@@ -295,33 +323,40 @@ network = Sequential(train_labels, d_MSE_loss, MSE_loss)
 
 network.add(Linear(2,25))
 network.add(Dropout(0.5,25))
-network.add(ReLU())
+network.add(Sigmoid())
 network.add(Linear(25,25))
-network.add(Dropout(0.5,25))
-network.add(ReLU())
+network.add(Sigmoid())
 network.add(Linear(25,25))
-network.add(Dropout(0.5,25))
 network.add(Sigmoid())
 network.add(Linear(25,2))
 network.add(Sigmoid())
 SGD = optimizer_SGD(network)
 Adam = optimizer_Adam(network)
-
-for i in range(1000):
+NB_EPOCH = 1000
+err = t.empty(NB_EPOCH)
+for i in range(NB_EPOCH):
     network.forward(train_input)
     network.display()
     network.backward()
     
-    #SGD.step(network, 1e-2, gamma = 0.5)
+    #SGD.step(network, 5e-3, gamma = 0.7)
     #network.update(5e-1)
-    Adam.step(network, 5e-3, 1e-3, 0.5, 0.6)
+    Adam.step(network, 5e-2, 1e-3, 0.9, 0.99) 
+    #print(network.output)
+    k = calculate_error_power(network.output,train_target)
+    err[i] = 100-k/10
 
-print("NB error for input: {}".format(calculate_error_power(network.output,train_target)))
-print(train_target.sum())
+print("NB error for train: {}".format(calculate_error_power(network.output,train_target)))
 
 network.modules[1].set_training(False)
-network.modules[4].set_training(False)
-network.modules[7].set_training(False)
+#network.modules[4].set_training(False)
+#network.modules[7].set_training(False)
 network.forward(test_input)
 print("NB error for test: {}".format(calculate_error_power(network.output,test_target)))
-print(test_target.sum())
+
+
+plt.subplots(figsize=(12, 6))
+plt.plot(err.numpy(), label='Framework 1')
+plt.xlabel('epochs')
+plt.ylabel('Accuracy [%]')
+plt.title('Accuracy evolution during the training')
