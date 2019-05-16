@@ -12,8 +12,11 @@ import numpy as np
 import torch as t
 import math
 import generate_sets as g # generator of sets
-import matplotlib.pyplot as plt
 import utility # activation and loss functions
+import framework_pytorch
+import json
+import pickle
+import plot as pl
 #-----------------------------------------------------------------------------#
 
 #----------------------------------- RULES -----------------------------------#
@@ -23,6 +26,9 @@ Seed set to retrieve the same results.
 '''
 t.set_grad_enabled(False)
 t.manual_seed(10)
+
+print("\x1b[0;36;41m----------------------------------------\n\
+            OUR FRAMEWORK\n----------------------------------------\n\x1b[0m")
 #-----------------------------------------------------------------------------#    
 
 #-------------------------------- SUPER CLASS --------------------------------#
@@ -180,6 +186,7 @@ class Sequential(Module):
         self.d_loss = d_loss
         self.loss = loss
         self.output= None
+        self.monitor_loss = []
         
     # add a module at the end of modules
     def add(self, module):
@@ -198,7 +205,17 @@ class Sequential(Module):
     
     # display loss of prediction
     def display(self):
-        print(self.loss(self.output,self.target))
+        #print(self.loss(self.output,self.target))
+        self.monitor_loss.append(self.loss(self.output,self.target))
+        
+    def save_params(self, filename):
+        '''
+        Save the network train loss, train accuracy, eval loss, eval accuracy
+        '''
+        data = {"test_loss": [tl for tl in self.monitor_loss]}
+        f = open(filename, 'w')
+        json.dump(data, f)
+        f.close()
         
     def set_dropout(self, b):
         for _,e in enumerate(self.modules):
@@ -310,18 +327,20 @@ Adam = optimizer_Adam(network)
 
 #---------------------------------- TRAINING ---------------------------------#
 NB_EPOCH = 1000
-err = t.empty(NB_EPOCH) # keep track of accuracy evolution
+accuracy = t.empty(NB_EPOCH) # keep track of accuracy evolution
 for i in range(NB_EPOCH):
     network.forward(train_input)
     network.display()
     network.backward()
     
+    #three different ways to update weights
+    
     #SGD.step(network, 5e-3, gamma = 0.7)
     #network.update(5e-1)
     Adam.step(network, 5e-2, 1e-3, 0.5, 0.6) 
     k = utility.calculate_error(network.output,train_target)
-    err[i] = 100-k/10 
-
+    accuracy[i] = (1000-k)/1000 * 100
+    print('[epoch {:d}] loss: {:0.5f} error: {} accuracy: {}'.format(i+1, network.monitor_loss[i], k, accuracy[i]))
 print("NB error for train: {}".format(utility.calculate_error(network.output,train_target)))
 #-----------------------------------------------------------------------------#
 
@@ -333,8 +352,13 @@ print("NB error for test: {}".format(utility.calculate_error(network.output,test
 #-----------------------------------------------------------------------------#
 
 #----------------------------------- PLOTTING --------------------------------#
-plt.subplots(figsize=(12, 6))
-plt.plot(err.numpy(), label='Framework 1')
-plt.xlabel('epochs')
-plt.ylabel('Accuracy [%]')
-plt.title('Accuracy evolution during the training')
+with open('accuracy_ours_v2.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    pickle.dump(accuracy.numpy(), f)
+
+with open('loss_ours_v2.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    pickle.dump(np.array(network.monitor_loss), f)
+    
+#pytorch framework
+framework_pytorch.__main__()
+pl.__main__()
+
