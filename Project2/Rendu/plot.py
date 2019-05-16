@@ -58,3 +58,4 @@ def __main__():
     ax2.set_ylabel('MSE loss Pytorch', fontsize=15)
     
     plt.title('Loss evolution during training', fontsize=20)
+    plt.show()

@@ -313,7 +313,7 @@ Activation functions are sigmoid because ReLU could cause constant loss. However
 this does work with the first two layers having ReLU.
 '''  
 network.add(Linear(2,25))
-network.add(Dropout(0.5,25))
+#network.add(Dropout(0.5,25))
 network.add(Sigmoid())
 network.add(Linear(25,25))
 network.add(Sigmoid())
@@ -326,7 +326,7 @@ Adam = optimizer_Adam(network)
 #-----------------------------------------------------------------------------#
 
 #---------------------------------- TRAINING ---------------------------------#
-NB_EPOCH = 100
+NB_EPOCH = 300
 accuracy = t.empty(NB_EPOCH) # keep track of accuracy evolution
 for i in range(NB_EPOCH):
     network.forward(train_input)

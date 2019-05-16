@@ -72,7 +72,7 @@ def train_model(model, train_input, h_train_target, train_target, mini_batch_siz
     #criterion = nn.CrossEntropyLoss()
     #optimizer = optim.SGD(model.parameters(), lr = 1e-3)
     optimizer = optim.Adam(model.parameters(), lr = 1e-3)
-    nb_epochs = 100
+    nb_epochs = 300
     
     loss_storage = []
     error_storage = []
@@ -162,7 +162,7 @@ def __main__():
     ax2.set_ylabel('Accuracy [%]', fontsize=15)
     
     plt.title('Loss and accuracy monitoring - PyTorch', fontsize=25)
-
+    plt.show()
     with open('accuracy_pytorch_v2.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
         pickle.dump(np.array(accuracies_), f)
         
