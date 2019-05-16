@@ -25,7 +25,7 @@ The condition is not to use torch autograd, so set grad to False.
 Seed set to retrieve the same results.
 '''
 t.set_grad_enabled(False)
-t.manual_seed(10)
+t.manual_seed(0)
 
 print("\x1b[0;36;41m----------------------------------------\n\
             OUR FRAMEWORK\n----------------------------------------\n\x1b[0m")
@@ -326,7 +326,7 @@ Adam = optimizer_Adam(network)
 #-----------------------------------------------------------------------------#
 
 #---------------------------------- TRAINING ---------------------------------#
-NB_EPOCH = 1000
+NB_EPOCH = 100
 accuracy = t.empty(NB_EPOCH) # keep track of accuracy evolution
 for i in range(NB_EPOCH):
     network.forward(train_input)
@@ -337,10 +337,10 @@ for i in range(NB_EPOCH):
     
     #SGD.step(network, 5e-3, gamma = 0.7)
     #network.update(5e-1)
-    Adam.step(network, 5e-2, 1e-3, 0.5, 0.6) 
+    Adam.step(network, 5e-2, 1e-3, 0.5, 0.6)
     k = utility.calculate_error(network.output,train_target)
-    accuracy[i] = (1000-k)/1000 * 100
-    print('[epoch {:d}] loss: {:0.5f} error: {} accuracy: {}'.format(i+1, network.monitor_loss[i], k, accuracy[i]))
+    accuracy[i] = (1000-k)/1000
+    print('[epoch {:d}] loss: {:0.5f} error: {} accuracy: {}'.format(i+1, network.monitor_loss[i], k, accuracy[i]*100))
 print("NB error for train: {}".format(utility.calculate_error(network.output,train_target)))
 #-----------------------------------------------------------------------------#
 

@@ -73,7 +73,9 @@ Predicted output contains the power of each classes
 '''
 def calculate_error(pred,tar):
     _,ind = pred.max(1)
-    i = ind.clone().detach()
-    diff = tar.long().view(tar.size(0))-i
-    return diff.abs().sum()
+    error = 0
+    for i,e in enumerate(tar):
+        if e != ind[i]:
+            error += 1
+    return error
 #-----------------------------------------------------------------------------#
