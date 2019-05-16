@@ -200,6 +200,11 @@ class Sequential(Module):
     def display(self):
         print(self.loss(self.output,self.target))
         
+    def set_dropout(self, b):
+        for _,e in enumerate(self.modules):
+            if hasattr(e, 'training'):
+                e.set_training(b)
+        
     def backward(self):
         grad = self.d_loss(self.output, self.target)
         for _,m in reversed (list(enumerate(self.modules))):
@@ -313,7 +318,7 @@ for i in range(NB_EPOCH):
     
     #SGD.step(network, 5e-3, gamma = 0.7)
     #network.update(5e-1)
-    Adam.step(network, 5e-2, 1e-3, 0.9, 0.99) 
+    Adam.step(network, 5e-2, 1e-3, 0.5, 0.6) 
     k = utility.calculate_error(network.output,train_target)
     err[i] = 100-k/10 
 
@@ -325,8 +330,9 @@ print("NB error for train: {}".format(utility.calculate_error(network.output,tra
 network.set_dropout(False)
 network.forward(test_input)
 print("NB error for test: {}".format(utility.calculate_error(network.output,test_target)))
+#-----------------------------------------------------------------------------#
 
-
+#----------------------------------- PLOTTING --------------------------------#
 plt.subplots(figsize=(12, 6))
 plt.plot(err.numpy(), label='Framework 1')
 plt.xlabel('epochs')
