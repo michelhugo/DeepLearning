@@ -27,8 +27,8 @@ Seed set to retrieve the same results.
 t.set_grad_enabled(False)
 t.manual_seed(0)
 
-print("\x1b[0;36;41m----------------------------------------\n\
-            OUR FRAMEWORK\n----------------------------------------\n\x1b[0m")
+print("\033[1;32;40----------------------------------------\n\
+            OUR FRAMEWORK\n----------------------------------------\n\033[0m")
 #-----------------------------------------------------------------------------#    
 
 #-------------------------------- SUPER CLASS --------------------------------#
@@ -208,6 +208,7 @@ class Sequential(Module):
         #print(self.loss(self.output,self.target))
         self.monitor_loss.append(self.loss(self.output,self.target))
         
+    # save parameters in file to be plotted afterwards
     def save_params(self, filename):
         '''
         Save the network train loss, train accuracy, eval loss, eval accuracy
@@ -217,6 +218,7 @@ class Sequential(Module):
         json.dump(data, f)
         f.close()
         
+    # turns dropout to true or false depending on training/testing
     def set_dropout(self, b):
         for _,e in enumerate(self.modules):
             if hasattr(e, 'training'):

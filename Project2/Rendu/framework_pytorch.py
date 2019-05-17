@@ -122,8 +122,8 @@ def train_model(model, train_input, h_train_target, train_target, mini_batch_siz
 ### Main
 def __main__():
     
-    print("\x1b[0;36;41m--------------------------------------------\n\
-                PYTORCH\n--------------------------------------------\n\x1b[0m")
+    print("\033[1;32;40m--------------------------------------------\n\
+                PYTORCH\n--------------------------------------------\n\033[0m")
     train_input, test_input, train_target, test_target = g.generate_sets()
     train_input, train_target = Variable(train_input), Variable(train_target)
     test_input, test_target = Variable(test_input), Variable(test_target)
